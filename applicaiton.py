@@ -148,5 +148,52 @@ def chart():
         }
     )
 
+@app.route('/news', methods=['POST'])
+def news():
+    data = request.get_json()
+    print("Received data:", data)
+    user_message = data['userRequest']['utterance']
+    # 기본 응답 메시지
+    response_text = "뉴스제공"
+    news_items = get_finance_news()
+    # 챗봇 응답 구성
+    response = {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {
+                    "listCard": {
+                        "header": {
+                            "title": "최신 금융 뉴스"
+                        },
+                        "items": news_items,  # 리스트 그대로 삽입
+                        "buttons": [
+                            {
+                                "label": "더보기",
+                                # "action": "block",
+                                "action": "webLink",
+                                "webLinkUrl": "https://m.stock.naver.com/investment/news/flashnews?category=ranknews",
+                                # "extra": {
+                                #     "key1": "value1",
+                                #     "key2": "value2"
+                                # }
+                            },
+                            {
+                                "label": "처음으로",
+                                "action": "block",
+                                "blockId": "673eff62aa9e34489f62a679",
+                                # "extra": {
+                                #     "key1": "value1",
+                                #     "key2": "value2"
+                                # }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+    return jsonify(response)
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
