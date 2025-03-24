@@ -5,6 +5,10 @@ import os
 from stock_info.stock_price import get_stock_price, code_by_name
 
 app = Flask(__name__)
+font_path = '/usr/share/fonts/truetype/unfonts-core/UnDotum.ttf'
+font_prop = fm.FontProperties(fname=font_path)
+rc('font', family=font_prop.get_name())    
+plt.rcParams['axes.unicode_minus'] = False  # 음수 기호 깨짐 방지
 
 # .env 파일 로드
 load_dotenv()
