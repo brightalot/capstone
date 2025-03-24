@@ -13,6 +13,7 @@ load_dotenv()
 price_info_block_id = os.getenv("PRICE_INFO_BLOCK_ID")
 chart_info_block_id = os.getenv("CHART_INFO_BLOCK_ID")
 home_block_id = os.getenv("HOME_BLOCK_ID")
+stock_info_block_id = os.getenv("STOCK_INFO_BLOCK_ID")
 
 
 @app.route("/")
@@ -244,6 +245,71 @@ def stock_news():
     }
 
     return jsonify(response)
+
+@app.route('/volume-rank', methods=['POST'])
+def volume_rank():
+    """
+    [국내주식] 거래량 순위 API
+    """
+    data = request.get_json()
+    print("Received data:", data)
+
+    stock_list = get_volume_rank()  # stock_rank.py에 있는 함수 호출
+
+    # API 호출 실패 시 오류 메시지 반환
+    if isinstance(stock_list, dict) and "error" in stock_list:
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": stock_list["error"]}}
+                ]
+            }
+        })
+
+    # 응답 메시지 생성 (ListItem 형식)
+    output_items = [
+        {
+            "title": stock["name"],  # 종목명
+            "description": f"💰 현재가: {stock['price']}원 | 📊 거래량: {stock['volume']}",
+            "action": "block",
+            "blockId": "STOCK_DETAIL_BLOCK",  # 상세 정보 블록 ID
+            "extra": {
+                "stock_code": stock["code"]  # 종목 코드 추가 (추후 상세 조회용)
+            }
+        }
+        for stock in stock_list
+    ]
+
+    # Kakao i 오픈빌더 응답 JSON (ListCard 사용)
+    return jsonify({
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {
+                    "listCard": {
+                        "header": {
+                            "title": "📊 거래량 상위 5개 종목"
+                        },
+                        "items": output_items,
+                        "buttons": [
+                            {
+                                "label": "더보기",
+                                "action": "block",
+                                "blockId": stock_info_block_id
+                            },
+                            {
+                                "label": "처음으로",
+                                "action": "block",
+                                "blockId": home_block_id
+                            }
+                        ]
+                    }
+                }
+            ],
+        }
+    })
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
