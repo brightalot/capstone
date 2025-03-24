@@ -2,7 +2,13 @@ from flask import Flask, request, jsonify
 import requests
 from dotenv import load_dotenv
 import os
-from stock_info.stock_price import get_stock_price, code_by_name
+import matplotlib.pyplot as plt
+from matplotlib import rc
+from matplotlib import font_manager as fm
+from utils.image_upload import upload_to_s3 # 이미지 업로드 관련 모듈
+from stock_info.stock_news import get_finance_news, get_stock_news
+from stock_info.draw_chart import draw_chart, get_stock_price, code_by_name
+from stock_info.stock_rank import get_volume_rank
 
 app = Flask(__name__)
 font_path = '/usr/share/fonts/truetype/unfonts-core/UnDotum.ttf'
