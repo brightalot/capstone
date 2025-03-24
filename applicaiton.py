@@ -181,7 +181,7 @@ def news():
                             {
                                 "label": "처음으로",
                                 "action": "block",
-                                "blockId": "673eff62aa9e34489f62a679",
+                                "blockId": home_block_id,
                                 # "extra": {
                                 #     "key1": "value1",
                                 #     "key2": "value2"
@@ -193,6 +193,56 @@ def news():
             ]
         }
     }
+    return jsonify(response)
+
+#종목 뉴스
+@app.route('/stock_news', methods=['POST'])
+def stock_news():
+    data = request.get_json()
+    print("Received data:", data)
+
+    stock_name = data['userRequest']['utterance'].strip()
+    if not stock_name:
+        stock_name = "삼성전자"  # 기본값 (테스트용)
+    stock_code = code_by_name(stock_name)
+    news_items = get_stock_news(stock_code)
+    # 상위 5건만 사용 예시
+    # news_items = news_items[:5]
+    print(news_items)
+    
+    # 응답 메시지 (리스트카드 예시)
+    response_text = f"{stock_name} 종목 뉴스"
+    # 종목코드로 만든 naver.com/item/news 링크(추가로 '더보기' 버튼에 연결하기 위함)
+    more_link = f"https://finance.naver.com/item/news.naver?code={stock_code}" if stock_code else "https://finance.naver.com"
+
+    response = {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {
+                    "listCard": {
+                        "header": {
+                            "title": response_text
+                        },
+                        "items": news_items,  # get_stock_news() 결과
+                        "buttons": [
+                            {
+                                "label": "더보기",
+                                "action": "webLink",
+                                "webLinkUrl": more_link
+                            },
+                            {
+                                "label": "처음으로",
+                                "action": "block",
+                                "blockId": home_block_id
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+
     return jsonify(response)
 
 if __name__ == "__main__":

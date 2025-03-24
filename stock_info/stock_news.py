@@ -43,51 +43,6 @@ def get_finance_news():
 
 app = Flask(__name__)
 
-# # 📰 특정 종목 뉴스 크롤링 함수
-# def get_stock_news(stock_name):
-#     startdate = datetime.datetime.strptime('2024-02-01', "%Y-%m-%d")  # 검색 시작 날짜
-#     enddate = datetime.datetime.strptime('2024-02-08', "%Y-%m-%d")  # 검색 종료 날짜
-#     news_list = []
-
-#     # Chrome 드라이버 설정
-#     serv = Service(ChromeDriverManager().install())
-#     chrome_options = webdriver.ChromeOptions()
-#     chrome_options.add_argument('--headless')  # GUI 없이 실행
-#     chrome_options.add_argument('--no-sandbox')
-#     chrome_options.add_argument('--disable-dev-shm-usage')
-#     driver = webdriver.Chrome(service=serv, options=chrome_options)
-
-#     try:
-#         # 뉴스 검색 URL 생성 (매일경제 기준)
-#         startdate_str = startdate.strftime("%Y-%m-%d")
-#         enddate_str = enddate.strftime("%Y-%m-%d")
-#         url = f'https://www.mk.co.kr/search?word={stock_name}&dateType=direct&startDate={startdate_str}&endDate={enddate_str}&searchField=title'
-#         driver.get(url)
-
-#         # 뉴스 개수 확인
-#         try:
-#             n_news = WebDriverWait(driver, 10).until(
-#                 EC.presence_of_element_located((By.XPATH, '/html/body/div[2]/main/section/div/div[2]/div/div/div[1]/section/header/div[1]/h2/span'))
-#             ).text
-#         except:
-#             n_news = '0'
-
-#         if n_news.isdigit() and int(n_news) > 0:
-#             soup = bs(driver.page_source, 'html.parser')
-#             news_date = soup.find_all("div", {"class": "txt_area"})
-
-#             for n in news_date[:5]:  # 최신 5개 뉴스 제공
-#                 date_text = n.find("div", {"class": "info_group"}).find("p", {"class": "time_info"}).text
-#                 title_text = n.find("h3", {"class": "news_ttl"}).text
-#                 news_list.append({"date": date_text, "title": title_text})
-
-#     except Exception as e:
-#         print("Error during news scraping:", e)
-
-#     driver.quit()
-#     return news_list
-
-
 def get_stock_news(stock_code):
     iframe_url = f"https://finance.naver.com/item/news_news.naver?code={stock_code}&page=1"
     headers = {
@@ -101,9 +56,6 @@ def get_stock_news(stock_code):
     res = requests.get(iframe_url, headers=headers)
     res.encoding = "euc-kr"
     html = res.text
-
-    # 1) 혹시라도 내용이 비정상인지 확인해보세요.
-    # print(html)
 
     soup = BeautifulSoup(html, "html.parser")
     table = soup.select_one("table.type5")
