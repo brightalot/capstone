@@ -1,0 +1,65 @@
+version: '3.7'
+services:
+  airflow-db:
+    image: postgres:13
+    container_name: airflow-postgres
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - "5433:5432"  # 호스트 포트:컨테이너 포트
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - airflow-net
+
+  airflow-webserver:
+    build: .
+    container_name: airflow-webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./requirements.txt:/requirements.txt
+    ports:
+      - "8080:8080"
+    depends_on:
+      - airflow-db
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users list | grep -q ${AIRFLOW_ADMIN_USER} || 
+        airflow users create --username ${AIRFLOW_ADMIN_USER} --password ${AIRFLOW_ADMIN_PASSWORD} --firstname ${AIRFLOW_ADMIN_FIRSTNAME} --lastname ${AIRFLOW_ADMIN_LASTNAME} --role Admin --email ${AIRFLOW_ADMIN_EMAIL} &&
+      airflow webserver
+      "
+    networks:
+      - airflow-net
+
+  airflow-scheduler:
+    build: .
+    container_name: airflow-scheduler
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    depends_on:
+      - airflow-db
+    command: >
+      bash -c "airflow db init && airflow scheduler"
+    networks:
+      - airflow-net
+
+networks:
+  airflow-net:
+    driver: bridge
