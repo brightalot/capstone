@@ -5,7 +5,7 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 from urllib.parse import urlparse
-from db import get_connection
+from .db import get_connection
 
 load_dotenv()
 

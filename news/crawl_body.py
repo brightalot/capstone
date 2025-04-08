@@ -2,7 +2,7 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from db import get_connection
+from .db import get_connection
 
 def is_naver_news(url):
     return urlparse(url).netloc == "n.news.naver.com"

@@ -1,7 +1,7 @@
 # news/sentiment.py
 import psycopg2
 from transformers import pipeline
-from db import get_connection
+from .db import get_connection
 
 sentiment_pipeline = pipeline("sentiment-analysis", model="kakaobank/kf-deberta-base")
 
