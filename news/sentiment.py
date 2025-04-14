@@ -59,23 +59,21 @@ def analyze_and_update_sentiment_db(batch_size=50):
     # 모델 사전 로드
     get_sentiment_pipeline()
     
-    while offset < total_count:
-        # 배치 단위로 데이터 가져오기
+    while True:
         cur.execute("""
             SELECT id, body FROM news_articles 
             WHERE body IS NOT NULL AND sentiment_score IS NULL
             ORDER BY id
-            LIMIT %s OFFSET %s
-        """, (batch_size, offset))
+            LIMIT %s
+        """, (batch_size,))
         
         rows = cur.fetchall()
         if not rows:
-            break
-            
-        print(f"[INFO] 배치 처리 중: {offset+1}~{offset+len(rows)}/{total_count}")
+            break  # 더 이상 처리할 뉴스가 없으면 종료
+
+        print(f"[INFO] 배치 처리 중: {updated+1}~{updated+len(rows)}/{total_count}")
         batch_start_time = time.time()
-        
-        # 감정 분석 수행
+
         for news_id, body in rows:
             try:
                 label, score = analyze_sentiment(body)
@@ -85,24 +83,19 @@ def analyze_and_update_sentiment_db(batch_size=50):
                     WHERE id = %s
                 """, (label, score, news_id))
                 updated += 1
-                
-                # 10개마다 커밋
+
                 if updated % 10 == 0:
                     conn.commit()
                     print(f"[INFO] {updated}/{total_count} 기사 처리 완료")
-                    
+
             except Exception as e:
                 print(f"[ERROR] ID {news_id}의 감정 분석 중 오류 발생: {e}")
         
-        # 배치 처리 완료 후 커밋
         conn.commit()
         batch_time = time.time() - batch_start_time
-        print(f"[INFO] 배치 {offset+1}~{offset+len(rows)} 처리 완료 (소요시간: {batch_time:.2f}초)")
+        print(f"[INFO] 배치 {updated - len(rows) + 1}~{updated} 처리 완료 (소요시간: {batch_time:.2f}초)")
         time.sleep(1)
         
-        # 다음 배치를 위해 오프셋 증가
-        offset += batch_size
-    
     cur.close()
     conn.close()
     print(f"[INFO] 감정 분석 완료: 총 {updated}개 기사 처리됨")
