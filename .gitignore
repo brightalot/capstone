@@ -162,4 +162,4 @@ cython_debug/
 #.idea/
 
 postgres-data/
-airflow/logs/
+airflow/logs/.DS_Store
