@@ -17,7 +17,7 @@ def get_volume_rank():
     if not base_url or not token or not app_key or not app_secret:
         return {"error": "환경 변수가 설정되지 않았습니다. .env 파일을 확인하세요."}
 
-    url = f"{base_url}/uapi/domestic-stock/v1/ranking/fluctuation"
+    url = f"{base_url}/uapi/domestic-stock/v1/quotations/volume-rank"
 
     params = {
         "FID_COND_MRKT_DIV_CODE": "J",       # 시장 분류 코드 (J: 주식)
