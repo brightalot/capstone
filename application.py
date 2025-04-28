@@ -2,13 +2,16 @@ from flask import Flask, request, jsonify
 import requests
 from dotenv import load_dotenv
 import os
+import json
 import matplotlib.pyplot as plt
 from matplotlib import rc
 from matplotlib import font_manager as fm
 from utils.image_upload import upload_to_s3 # 이미지 업로드 관련 모듈
+from utils.get_hash_key import get_hash # 해쉬키 발급
 from stock_info.stock_news import get_finance_news, get_stock_news
 from stock_info.draw_chart import draw_chart, get_stock_price, code_by_name
 from stock_info.stock_rank import get_volume_rank
+
 
 app = Flask(__name__)
 font_path = '/usr/share/fonts/truetype/unfonts-core/UnDotum.ttf'
@@ -319,6 +322,101 @@ def volume_rank():
             ],
         }
     })
+
+@app.route('/mock_order_buy', methods=['POST'])
+def mock_order():
+    data = request.get_json()
+    # payload = json.dumps({
+    #   "CANO": "{{CANO}}", // 계좌
+    #   "ACNT_PRDT_CD": "01", // 계좌 2자리
+    #   "PDNO": "005930", // 종목코드
+    #   "ORD_DVSN": "00", // 주문 구분 (시장가)
+    #   "ORD_QTY": "1", // 개수
+    #   "ORD_UNPR": "55000" //1주당 가격 * 장전 시간외, 장후 시간외, 시장가의 경우 1주당 가격을 공란으로 비우지 않음 "0"으로 입력 권고
+    # })
+    # 컨텍스트에서 주문 정보 추출
+    stock_name = data['action']['params'].get('stock_name')
+    # 종목코드 변환
+    stock_code = code_by_name(stock_name)
+    
+    quantity = data['action']['params'].get('quantity')
+    price = data['action']['params'].get('price_type')
+    order_type = data['action']['params'].get('order_type', '매수')  # 기본값: 매수
+    
+    
+    # 주문 정보로 해시키 발급 및 주문 처리
+    order_data = {
+        "CANO": os.getenv("MOCK_ACC_NO"),
+        "ACNT_PRDT_CD": "01",
+        "PDNO": stock_code,
+        "ORD_DVSN": "01",  # 시장가 주문 고정
+        "ORD_QTY": str(quantity),
+        "ORD_UNPR": "0" # 시장가 주문
+    }
+    print(order_data)
+    # 해시키 발급
+    # hash_key = get_hash(order_data) 필수 헤더 아님
+    # print(hash_key)
+    if isinstance(hash_key, dict) and "error" in hash_key:
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [{"simpleText": {"text": f"주문 처리 중 오류가 발생했습니다: {hash_key['error']}"}}]
+            }
+        })
+    
+    # 주문 API URL (매수/매도에 따라 TR ID 달라짐)
+    order_url = "https://openapivts.koreainvestment.com:29443/uapi/domestic-stock/v1/trading/order-cash"
+    token = os.getenv("MOCK_KI_TOKEN")
+    app_key = os.getenv("MOCK_APP_KEY")
+    app_secret = os.getenv("MOCK_SECRET_KEY")
+    # 주문 유형에 따른 TR ID 설정
+    tr_id = "VTTC0802U"  # 모의투자 매수/매도 TR ID
+    
+    # 주문 API 헤더
+    headers = {
+        "content-type": "application/json",
+        "authorization": f"Bearer {token}",
+        "appkey": app_key,
+        "appsecret": app_secret,
+        "tr_id": tr_id,
+        "hashkey": hash_key
+    }
+    
+    try:
+        # 주문 API 호출
+        response = requests.post(order_url, headers=headers, data=json.dumps(order_data))
+        response.raise_for_status()
+        result = response.json()
+        print(result)
+        
+        # 주문 성공 응답
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": f"✅ {stock_name} {quantity}주 {order_type} 주문이 접수되었습니다.\n주문번호: {result.get('ODNO', '(주문번호 없음)')}"}}
+                ],
+                "quickReplies": [
+                    {"label": "처음으로", "action": "block", "blockId": home_block_id}
+                ]
+            }
+        })
+        
+    except Exception as e:
+        # 주문 실패 응답
+        print(e)
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": f"❌ 주문 처리 중 오류가 발생했습니다: {str(e)}"}}
+                ],
+                "quickReplies": [
+                    {"label": "처음으로", "action": "block", "blockId": home_block_id}
+                ]
+            }
+        })
 
 
 if __name__ == "__main__":
