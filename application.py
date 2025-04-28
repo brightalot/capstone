@@ -357,13 +357,13 @@ def mock_order():
     # 해시키 발급
     # hash_key = get_hash(order_data) 필수 헤더 아님
     # print(hash_key)
-    if isinstance(hash_key, dict) and "error" in hash_key:
-        return jsonify({
-            "version": "2.0",
-            "template": {
-                "outputs": [{"simpleText": {"text": f"주문 처리 중 오류가 발생했습니다: {hash_key['error']}"}}]
-            }
-        })
+    # if isinstance(hash_key, dict) and "error" in hash_key:
+    #     return jsonify({
+    #         "version": "2.0",
+    #         "template": {
+    #             "outputs": [{"simpleText": {"text": f"주문 처리 중 오류가 발생했습니다: {hash_key['error']}"}}]
+    #         }
+    #     })
     
     # 주문 API URL (매수/매도에 따라 TR ID 달라짐)
     order_url = "https://openapivts.koreainvestment.com:29443/uapi/domestic-stock/v1/trading/order-cash"
@@ -380,7 +380,7 @@ def mock_order():
         "appkey": app_key,
         "appsecret": app_secret,
         "tr_id": tr_id,
-        "hashkey": hash_key
+        # "hashkey": hash_key
     }
     
     try:
@@ -414,6 +414,95 @@ def mock_order():
                 ],
                 "quickReplies": [
                     {"label": "처음으로", "action": "block", "blockId": home_block_id}
+                ]
+            }
+        })
+
+@app.route('/mock_inquire_balance', methods=['POST'])
+def mock_inquire_balance():
+    # 계좌번호 및 기타 정보는 환경변수에서 가져오기
+    cano = os.getenv("MOCK_ACC_NO")
+    acnt_prdt_cd = "01"  # 2자리 상품코드 고정
+
+    # API URL
+    balance_url = f"https://openapivts.koreainvestment.com:29443/uapi/domestic-stock/v1/trading/inquire-balance"
+
+    # 쿼리스트링 파라미터
+    params = {
+        "CANO": cano,
+        "ACNT_PRDT_CD": acnt_prdt_cd,
+        "AFHR_FLPR_YN": "N",
+        "OFL_YN": "",
+        "INQR_DVSN": "01",
+        "UNPR_DVSN": "01",
+        "FUND_STTL_ICLD_YN": "N",
+        "FNCG_AMT_AUTO_RDPT_YN": "N",
+        "PRCS_DVSN": "00",
+        "CTX_AREA_FK100": "",
+        "CTX_AREA_NK100": ""
+    }
+
+    # 헤더
+    token = os.getenv("MOCK_KI_TOKEN")
+    app_key = os.getenv("MOCK_APP_KEY")
+    app_secret = os.getenv("MOCK_SECRET_KEY")
+
+    headers = {
+        'content-type': 'application/json',
+        'authorization': f'Bearer {token}',
+        'appkey': app_key,
+        'appsecret': app_secret,
+        'tr_id': 'VTTC8434R'  # 모의투자 잔고조회 TR ID
+    }
+
+    try:
+        # 잔고조회 API 호출
+        response = requests.get(balance_url, headers=headers, params=params)
+        response.raise_for_status()
+        result = response.json()
+        print(result)
+
+        # 성공 응답 처리
+        balance_info = result.get('output1', [])
+        account_summary = result.get('output2', [{}])[0]  # [0] 추가
+
+        # text_response = "\\n".join([
+        #     f"{item.get('prdt_name', '(종목명없음)')}: {item.get('hldg_qty', 0)}주"
+        #     for item in balance_info
+        # ])
+        # 종목 보유 정보 정리
+        if balance_info:
+            text_response = "\\n".join([
+                f"{item.get('prdt_name', '(종목명없음)')}: {item.get('hldg_qty', 0)}주"
+                for item in balance_info
+            ])
+        else:
+            text_response = "📭 보유 종목이 없습니다."
+
+        total_assets = account_summary.get('tot_evlu_amt', '0')  # 정상작동!
+
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": f"📈 보유 종목\n{text_response}\n\n총 평가금액: {total_assets}원"}}
+                ],
+                "quickReplies": [
+                    {"label": "처음으로", "action": "block", "blockId": os.getenv("HOME_BLOCK_ID")}
+                ]
+            }
+        })
+
+    except Exception as e:
+        print(e)
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": f"❌ 잔고 조회 중 오류 발생: {str(e)}"}}
+                ],
+                "quickReplies": [
+                    {"label": "처음으로", "action": "block", "blockId": os.getenv("HOME_BLOCK_ID")}
                 ]
             }
         })
