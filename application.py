@@ -66,13 +66,13 @@ def price():
     # 컨텍스트에서 종목명 가져오기
     stock_name = None
     for context in data.get('contexts', []):
-        if context['name'] == "stock_name":
-            stock_name = context['params'].get('ans_stock_name', {}).get('resolvedValue')
+        if context['name'] == "kospi_stock_name":
+            stock_name = context['params'].get('kospi_stock_name', {}).get('resolvedValue')
             break
     
     # 컨텍스트에 없으면 params에서 가져오기
     if not stock_name:
-        stock_name = data['action']['params'].get('stock_name')
+        stock_name = data['action']['params'].get('kospi_stock_name')
     
     # 가격 유형 가져오기
     price_type = data['action']['params'].get('price_type', "현재가")  # 기본값: 현재가
@@ -107,13 +107,13 @@ def chart():
 
     # 컨텍스트에서 가져오기
     for context in data.get('contexts', []):
-        if context['name'] == "stock_name":
-            stock_name = context['params'].get('stock_name', {}).get('resolvedValue')
+        if context['name'] == "kospi_stock_name":
+            stock_name = context['params'].get('kospi_stock_name', {}).get('resolvedValue')
             break
 
     # params에서 가져오기 (컨텍스트가 없을 경우)
     if not stock_name:
-        stock_name = data['action']['params'].get('stock_name')
+        stock_name = data['action']['params'].get('kospi_stock_name')
     
     # 차트 유형 가져오기 (일, 주, 월 등)
     chart_type = data['action']['params']['chart_type']
