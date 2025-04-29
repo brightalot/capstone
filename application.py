@@ -63,16 +63,15 @@ def price():
     data = request.get_json()
     print("Received data:", data)
 
-    # 컨텍스트에서 종목명 가져오기
-    stock_name = None
-    for context in data.get('contexts', []):
-        if context['name'] == "kospi_stock_name":
-            stock_name = context['params'].get('kospi_stock_name', {}).get('resolvedValue')
-            break
-    
-    # 컨텍스트에 없으면 params에서 가져오기
+    # 파라미터에서 먼저 종목명 가져오기
+    stock_name = data['action']['params'].get('kospi_stock_name')
+
+    # 파라미터에 없으면 컨텍스트에서 가져오기
     if not stock_name:
-        stock_name = data['action']['params'].get('kospi_stock_name')
+        for context in data.get('contexts', []):
+            if context['name'] == "kospi_stock_name":
+                stock_name = context['params'].get('kospi_stock_name', {}).get('resolvedValue')
+                break
     
     # 가격 유형 가져오기
     price_type = data['action']['params'].get('price_type', "현재가")  # 기본값: 현재가
@@ -105,18 +104,27 @@ def chart():
     # 종목명 가져오기 (컨텍스트 > params 순서로 확인)
     stock_name = None
 
-    # 컨텍스트에서 가져오기
-    for context in data.get('contexts', []):
-        if context['name'] == "kospi_stock_name":
-            stock_name = context['params'].get('kospi_stock_name', {}).get('resolvedValue')
-            break
+    # 파라미터에서 먼저 종목명 가져오기
+    stock_name = data['action']['params'].get('kospi_stock_name')
 
-    # params에서 가져오기 (컨텍스트가 없을 경우)
+    # 파라미터에 없으면 컨텍스트에서 가져오기
     if not stock_name:
-        stock_name = data['action']['params'].get('kospi_stock_name')
+        for context in data.get('contexts', []):
+            if context['name'] == "kospi_stock_name":
+                stock_name = context['params'].get('kospi_stock_name', {}).get('resolvedValue')
+                break
     
     # 차트 유형 가져오기 (일, 주, 월 등)
-    chart_type = data['action']['params']['chart_type']
+    # chart_type = data['action']['params']['chart_type']
+    chart_type = data['action']['params'].get('chart_type', '일')
+    # chart_type = data['action']['params'].get('chart_type', "일")  # 예: 기본값 "일"
+    print("########################################################################################")
+    print(stock_name)
+    print(chart_type)
+    print("########################################################################################")
+    if not chart_type:
+        
+        chart_type = data['action']['params'].get('chart_type', "일")
 
     # 종목명이 없으면 종목 입력 블록으로 바로 이동
     if not stock_name:
@@ -131,18 +139,22 @@ def chart():
 
     # 종목명 + 차트 타입을 기반으로 차트 이미지 생성
     image_url = draw_chart(chart_type, stock_name)
-    print(image_url)
+    
     # 응답 메시지
     response_text = f"📊 {stock_name} {chart_type} 차트입니다."
     
     price_type = data['action']['params'].get('price_type', "현재가")  # 기본값: 현재가
-
+    
     # 가격 정보 가져오기
     stock_price = get_stock_price(stock_name, price_type)
-
+    
     # 응답 메시지 생성
     price_response_text = f"📊 {stock_name}의 {price_type}는 {stock_price}원입니다."
-
+    print(f"image_url: {image_url}\n")
+    print(f"response_text: {response_text}\n")
+    print(f"stock_price: {stock_price}\n")
+    print(price_response_text)
+    print("\n")
     return jsonify(
         {
             "version": "2.0",
@@ -151,6 +163,7 @@ def chart():
                     {"simpleText": {"text": response_text}},
                     {"simpleImage": {"imageUrl": image_url, "altText": f"{stock_name} 차트"}},
                     {"simpleText": {"text": price_response_text}},
+                    
                 ],
                 "quickReplies": [
                     {"label": "🔄 다른 정보 조회", "action": "block", "blockId": chart_info_block_id},
