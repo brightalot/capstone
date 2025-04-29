@@ -285,11 +285,8 @@ def volume_rank():
         {
             "title": stock["name"],  # 종목명
             "description": f"💰 현재가: {stock['price']}원 | 📊 거래량: {stock['volume']}",
-            "action": "block",
-            "blockId": "STOCK_DETAIL_BLOCK",  # 상세 정보 블록 ID
-            "extra": {
-                "stock_code": stock["code"]  # 종목 코드 추가 (추후 상세 조회용)
-            }
+            "action": "message",
+            "messageText" : stock["name"]
         }
         for stock in stock_list
     ]
