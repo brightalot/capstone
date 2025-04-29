@@ -11,7 +11,7 @@ from utils.get_hash_key import get_hash # 해쉬키 발급
 from stock_info.stock_news import get_finance_news, get_stock_news
 from stock_info.draw_chart import draw_chart, get_stock_price, code_by_name
 from stock_info.stock_rank import get_volume_rank
-
+from utils.response_generator import generate_stock_response
 
 app = Flask(__name__)
 font_path = '/usr/share/fonts/truetype/unfonts-core/UnDotum.ttf'
@@ -488,27 +488,52 @@ def mock_inquire_balance():
         #     for item in balance_info
         # ])
         # 종목 보유 정보 정리
+        # 무조건 먼저 초기화
+        balance_info = result.get('output1') or []
+        account_summary = (result.get('output2') or [{}])[0]
+
         if balance_info:
-            text_response = "\\n".join([
-                f"{item.get('prdt_name', '(종목명없음)')}: {item.get('hldg_qty', 0)}주"
-                for item in balance_info
-            ])
+            stock_list = []
+            for item in balance_info:
+                name = item.get('prdt_name', '(종목명없음)')
+                qty = int(item.get('hldg_qty', 0))
+                eval_amt = int(item.get('evlu_amt', 0))
+                profit_amt = int(item.get('evlu_pfls_amt', 0))
+                profit_rate = float(item.get('evlu_erng_rt', 0))
+                stock_list.append((name, qty, eval_amt, profit_amt, profit_rate))
+
+            total_assets = int(account_summary.get('tot_evlu_amt', 0))
+            total_profit_amt = int(account_summary.get('evlu_pfls_smtl_amt', 0))
+            total_profit_rate = float(account_summary.get('asst_icdc_erng_rt', 0))
+
+            response_body = generate_stock_response(
+                stock_list,
+                total_assets,
+                total_profit_amt,
+                total_profit_rate
+            )
+            return jsonify(response_body)
+
         else:
-            text_response = "📭 보유 종목이 없습니다."
-
-        total_assets = account_summary.get('tot_evlu_amt', '0')  # 정상작동!
-
-        return jsonify({
-            "version": "2.0",
-            "template": {
-                "outputs": [
-                    {"simpleText": {"text": f"📈 보유 종목\n{text_response}\n\n총 평가금액: {total_assets}원"}}
-                ],
-                "quickReplies": [
-                    {"label": "처음으로", "action": "block", "blockId": os.getenv("HOME_BLOCK_ID")}
-                ]
-            }
-        })
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [
+                        {
+                            "simpleText": {
+                                "text": "📭 현재 보유 중인 종목이 없습니다."
+                            }
+                        }
+                    ],
+                    "quickReplies": [
+                        {
+                            "label": "처음으로",
+                            "action": "block",
+                            "blockId": os.getenv("HOME_BLOCK_ID")
+                        }
+                    ]
+                }
+            })
 
     except Exception as e:
         print(e)
