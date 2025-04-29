@@ -335,9 +335,9 @@ def mock_order():
     
     quantity = data['action']['params'].get('order_quantity')
     price = data['action']['params'].get('price_type')
-    order_type = data['action']['params'].get('order_type', '매수')  # 기본값: 매수
+    order_type = data['action']['params'].get('order_command')
     
-    
+    print(order_type)
     # 주문 정보로 해시키 발급 및 주문 처리
     order_data = {
         "CANO": os.getenv("MOCK_ACC_NO"),
@@ -364,9 +364,15 @@ def mock_order():
     token = os.getenv("MOCK_KI_TOKEN")
     app_key = os.getenv("MOCK_APP_KEY")
     app_secret = os.getenv("MOCK_SECRET_KEY")
-    # 주문 유형에 따른 TR ID 설정
-    tr_id = "VTTC0802U"  # 모의투자 매수/매도 TR ID
     
+    # 주문 유형에 따른 TR ID 설정
+    # tr_id = "VTTC0802U"  # 모의투자 매수/매도 TR ID
+    
+    if order_type == "매수":
+        tr_id = "VTTC0012U"  # 매수 TR ID
+    elif order_type == "매도":
+        tr_id = "VTTC0011U"  # 매도 TR ID   
+        
     # 주문 API 헤더
     headers = {
         "content-type": "application/json",
@@ -391,7 +397,12 @@ def mock_order():
         # ✅ 모의투자 장 종료 예외처리
         if result.get('msg_cd') == '40580000':
             raise Exception("모의투자 장 종료로 주문이 불가능합니다.")
-            
+        
+        # ✅ 응답 성공 여부 체크
+        elif result.get('msg_cd') != '0000':
+            # 실패한 경우
+            raise Exception(result.get('msg1', '주문 실패'))
+
         order_no = result.get('output', {}).get('ODNO', '(주문번호 없음)')
 
         # 주문 성공 응답
@@ -399,7 +410,8 @@ def mock_order():
             "version": "2.0",
             "template": {
                 "outputs": [
-                    {"simpleText": {"text": f"✅ {stock_name} {quantity}주 {order_type} 주문이 접수되었습니다.\n주문번호: {order_no}"}},
+                    {"simpleText": {"text": f"✅ {stock_name} {quantity}주 {order_type} 주문이 접수되었습니다."}},
+                    {"simpleText": {"text": f"주문번호: {order_no}"}}
                 ],
                 "quickReplies": [
                     {"label": "처음으로", "action": "block", "blockId": home_block_id},
