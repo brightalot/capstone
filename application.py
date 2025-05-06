@@ -296,8 +296,8 @@ def volume_rank():
     # 응답 메시지 생성 (ListItem 형식)
     output_items = [
         {
-            "title": stock["name"],  # 종목명
-            "description": f"💰 현재가: {stock['price']}원 | 📊 거래량: {stock['volume']}",
+            "title": stock["name"] + "  |  " + f"현재가: {stock['price']}원",  # 종목명
+            "description": f"거래량: {stock['volume']}",
             "action": "message",
             "messageText" : stock["name"]
         }
