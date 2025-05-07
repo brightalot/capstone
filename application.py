@@ -28,6 +28,7 @@ chart_info_block_id = os.getenv("CHART_INFO_BLOCK_ID")
 home_block_id = os.getenv("HOME_BLOCK_ID")
 stock_info_block_id = os.getenv("STOCK_INFO_BLOCK_ID")
 mock_balance_id=os.getenv("MOCK_BALANCE_ID")
+stock_predict_block_id=os.getenv("STOCK_PREDICT_BLOCK_ID")
 
 @app.route("/")
 def hello():
@@ -559,6 +560,94 @@ def mock_inquire_balance():
             }
         })
 
+    
+from stock_info.predictor import stock_class, model_class
 
+    
+# 예측 API 엔드포인트
+@app.route("/predict_stock_price", methods=["POST"])
+def predict_stock_price():
+    data = request.get_json()
+    print("Received data:", data)
+
+    stock_name = data['action']['params'].get('kospi_stock_name', '삼성전자')  # 기본값: 삼성전자
+    chart_type = data['action']['params'].get('stock_chart_type', '주')  # 기본값: 주
+
+    # '일', '주', '월' -> 'D', 'W', 'M' 변환
+    type_map = {"일": "D", "주": "W", "월": "M"}
+    chart_code = type_map.get(chart_type, "W")
+
+    try:
+        sc = stock_class()
+        mc = model_class()
+
+        code = sc.code_by_name(stock_name)
+        if not code:
+            raise ValueError("해당 종목명을 찾을 수 없습니다.")
+
+        sc.resp_Time(chart_code, code)
+        data = sc.return_data()
+
+        high = mc.predict_hgpr(data)
+        low = mc.predict_lwpr(data)
+
+        prediction_date = get_prediction_date(chart_type)
+
+        response_text = (
+            # f"📈 {stock_name} ({chart_type}봉 기준) 예측 결과\n\n"
+            f"📈 {stock_name} {prediction_date} 주가 예측 결과\n\n"
+            # f"📅 예측일: {prediction_date}\n"
+            f"🔺 고가: {high}원\n"
+            f"🔻 저가: {low}원"
+        )
+
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": response_text}}
+                ],
+                "quickReplies": [
+                    {"label": "다른 종목 예측", "action": "block", "blockId": stock_predict_block_id},
+                    {"label": "차트 보기", "action": "block", "blockId": chart_info_block_id},
+                    {"label": "처음으로", "action": "block", "blockId": home_block_id}
+                ]
+            }
+        })
+
+    except Exception as e:
+        print(e)
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": f"❌ 예측 중 오류가 발생했습니다: {str(e)}"}}
+                ],
+                "quickReplies": [
+                    {"label": "처음으로", "action": "block", "blockId": home_block_id}
+                ]
+            }
+        })
+
+from datetime import datetime, timedelta
+
+def get_prediction_date(chart_type):
+    today = datetime.today()
+
+    if chart_type == "일":
+        target_date = today + timedelta(days=1)
+    elif chart_type == "주":
+        target_date = today + timedelta(days=(7 - today.weekday()))  # 다음 주 월요일
+    elif chart_type == "월":
+        if today.month == 12:
+            target_date = today.replace(year=today.year + 1, month=1, day=1)
+        else:
+            target_date = today.replace(month=today.month + 1, day=1)
+    else:
+        target_date = today  # fallback
+
+    return target_date.strftime("%m월%d일")
+
+    
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
