@@ -12,6 +12,9 @@ from stock_info.stock_news import get_finance_news, get_stock_news
 from stock_info.draw_chart import draw_chart, get_stock_price, code_by_name
 from stock_info.stock_rank import get_volume_rank
 from utils.response_generator import generate_stock_response
+from stock_info.stock_rank import get_market_cap_rank
+from stock_info.stock_rank import get_price_change_rank
+from stock_info.stock_rank import get_volume_power_rank
 
 app = Flask(__name__)
 font_path = '/usr/share/fonts/truetype/unfonts-core/UnDotum.ttf'
@@ -29,6 +32,7 @@ home_block_id = os.getenv("HOME_BLOCK_ID")
 stock_info_block_id = os.getenv("STOCK_INFO_BLOCK_ID")
 mock_balance_id=os.getenv("MOCK_BALANCE_ID")
 stock_predict_block_id=os.getenv("STOCK_PREDICT_BLOCK_ID")
+stock_rank_block_id=os.getenv("STOCK_RANK_BLOCK_ID")
 
 @app.route("/")
 def hello():
@@ -320,7 +324,7 @@ def volume_rank():
                             {
                                 "label": "더보기",
                                 "action": "block",
-                                "blockId": stock_info_block_id
+                                "blockId": stock_rank_block_id
                             },
                             {
                                 "label": "처음으로",
@@ -333,6 +337,212 @@ def volume_rank():
             ],
         }
     })
+
+@app.route('/market-cap-rank', methods=['POST'])
+def market_cap_rank():
+    """
+    [국내주식] 시가총액 순위 API
+    """
+    data = request.get_json()
+    print("Received data:", data)
+
+    stock_list = get_market_cap_rank()  # stock_rank.py에 있는 함수 호출
+
+    # API 호출 실패 시 오류 메시지 반환
+    if isinstance(stock_list, dict) and "error" in stock_list:
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": stock_list["error"]}}
+                ]
+            }
+        })
+
+    # 응답 메시지 생성 (ListItem 형식)
+    output_items = [
+        {
+            "title": f"{i+1}. {stock['name']} : {int(stock['market_cap'])/10000:,.1f}조원",
+            "description": f"현재가: {stock['price']}원",
+            "action": "message",
+            "messageText": stock["name"]
+        }
+        for i, stock in enumerate(stock_list)
+    ]
+    # Kakao i 오픈빌더 응답 JSON (ListCard 사용)
+    return jsonify({
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {
+                    "listCard": {
+                        "header": {
+                            "title": "🏦 시가총액 상위 5개 종목"
+                        },
+                        "items": output_items,
+                        "buttons": [
+                            {
+                                "label": "더보기",
+                                "action": "block",
+                                "blockId": stock_rank_block_id
+                            },
+                            {
+                                "label": "처음으로",
+                                "action": "block",
+                                "blockId": home_block_id
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    })
+
+@app.route('/price-change-rank', methods=['POST'])
+def price_change_rank():
+    """
+    [국내주식] 등락률 상위 5개 종목 API (거래량 포함)
+    """
+    data = request.get_json()
+    print("Received data:", data)
+
+    stock_list = get_price_change_rank()
+
+    # API 호출 실패 시 오류 메시지 반환
+    if isinstance(stock_list, dict) and "error" in stock_list:
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": stock_list["error"]}}
+                ]
+            }
+        })
+
+    # 응답 메시지 생성 (ListItem 형식)
+    output_items = [
+        {
+            "title": f"{i+1}. {stock['name']} | 등락률: {float(stock['change_rate']):.2f}%",
+            "description": f"현재가: {stock['price']}원",
+            "action": "message",
+            "messageText": stock["name"]
+        }
+        for i, stock in enumerate(stock_list[:5])
+    ]
+
+    # Kakao i 오픈빌더 응답 JSON (ListCard 사용)
+    return jsonify({
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {
+                    "listCard": {
+                        "header": {
+                            "title": "📈 등락률 상위 5개 종목"
+                        },
+                        "items": output_items,
+                        "buttons": [
+                            {
+                                "label": "더보기",
+                                "action": "block",
+                                "blockId": stock_rank_block_id
+                            },
+                            {
+                                "label": "처음으로",
+                                "action": "block",
+                                "blockId": home_block_id
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    })
+
+@app.route('/volume-power-rank', methods=['POST'])
+def volume_power_rank():
+    """
+    [국내주식] 체결강도 상위 5개 종목 API
+    """
+    data = request.get_json() 
+    print("Received data:", data)
+
+    kosdaq_stock_list = get_volume_power_rank("1001")
+    kospi_stock_list = get_volume_power_rank("2001")
+
+    # API 호출 실패 시 오류 메시지 반환
+    if isinstance(kosdaq_stock_list, dict) and "error" in kosdaq_stock_list:
+        return jsonify(simple_text_response(kosdaq_stock_list["error"]))
+
+    if isinstance(kospi_stock_list, dict) and "error" in kospi_stock_list:
+        return jsonify(simple_text_response(kospi_stock_list["error"]))
+
+    def stock_items(stocks):
+        return [
+            {
+                "title": stock["name"],
+                "description": f"현재가: {stock['price']}원 | 체결강도: {stock['volume_power']}%",
+                "action": "message",
+                "messageText": stock["name"]
+            }
+            for stock in stocks
+        ]
+
+    response = {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {
+                    "carousel": {
+                        "type": "listCard",
+                        "items": [
+                            {
+                                "header": { "title": "📈 KOSDAQ 체결강도 TOP 5" },
+                                "items": stock_items(kosdaq_stock_list),
+                                "buttons": [
+                                    {
+                                        "label": "더보기",
+                                        "action": "block",
+                                        "blockId": stock_rank_block_id
+                                    },
+                                    {
+                                        "label": "처음으로",
+                                        "action": "block",
+                                        "blockId": home_block_id
+                                    }
+                                ]
+                            },
+                            {
+                                "header": { "title": "📊 KOSPI 체결강도 TOP 5" },
+                                "items": stock_items(kospi_stock_list),
+                                "buttons": [
+                                    {
+                                        "label": "더보기",
+                                        "action": "block",
+                                        "blockId": stock_rank_block_id
+                                    },
+                                    {
+                                        "label": "처음으로",
+                                        "action": "block",
+                                        "blockId": home_block_id
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ],
+            "quickReplies": [
+                {
+                    "messageText": "처음으로",
+                    "action": "message",
+                    "label": "처음으로"
+                }
+            ]
+        }
+    }
+
+    return jsonify(response)
 
 @app.route('/mock_order_buy', methods=['POST'])
 def mock_order():
