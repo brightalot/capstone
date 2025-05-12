@@ -120,7 +120,6 @@ def save_pic(chart_type):
     df = pd.DataFrame(resp_Time(chart_type)['output2'])
     dt = pd.to_datetime(df['stck_bsop_date'], format="%Y%m%d")
     lst = []
-
     for i in df['stck_oprc']:
         lst += [int(i)]
 

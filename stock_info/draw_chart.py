@@ -48,11 +48,9 @@ def get_stock_price(stock_name, price_type="현재가"):
 
     stock_info = broker.fetch_price(stock_code)
     if not stock_info or "output" not in stock_info:
-        print("----------------------")
-        print("stock_info")
-        print(stock_info)
-        print("----------------------")
         return "⚠️ 주가 정보를 가져올 수 없습니다."
+    
+    output = stock_info["output"]
 
     price_mapping = {
         "현재가": "stck_prpr",
@@ -61,7 +59,24 @@ def get_stock_price(stock_name, price_type="현재가"):
         "저가": "stck_lwpr",
         "종가": "stck_prpr"
     }
-    return stock_info["output"].get(price_mapping.get(price_type, "stck_prpr"), "정보 없음")
+    
+    price = output.get(price_mapping.get(price_type, "stck_prpr"), "정보 없음")
+
+    # 현재가일 경우, 등락 정보도 함께 제공
+    if price_type == "현재가":
+        change_sign = output.get("prdy_vrss_sign")  # '1' 하락, '2' 상승, '3' 보합
+        change_rate = output.get("prdy_ctrt", "0.00")
+
+        if change_sign == "1":
+            change_symbol = "▼"
+        elif change_sign == "2":
+            change_symbol = "▲"
+        else:
+            change_symbol = "-"
+
+        return price, f"{stock_name}의 현재가는 {price}원 ({change_symbol}{change_rate}%)입니다."
+
+    return price, f"{stock_name}의 {price_type}는 {price}원입니다."
 
 
 #봉의 단위를 설정하여 해당정보들을 리턴

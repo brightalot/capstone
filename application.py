@@ -82,16 +82,13 @@ def price():
     price_type = data['action']['params'].get('price_type', "현재가")  # 기본값: 현재가
 
     # 가격 정보 가져오기
-    stock_price = get_stock_price(stock_name, price_type)
-
-    # 응답 메시지 생성
-    response_text = f"📊 {stock_name}의 {price_type}는 {stock_price}원입니다."
+    _, response_text = get_stock_price(stock_name, price_type)
 
     return jsonify({
         "version": "2.0",
         "template": {
             "outputs": [
-                {"simpleText": {"text": response_text}}
+                {"simpleText": {"text": "📊 " + response_text}}
             ],
             "quickReplies": [
                 {"label": "🔄 다른 정보 조회", "action": "block", "blockId": price_info_block_id},
@@ -151,15 +148,13 @@ def chart():
     price_type = data['action']['params'].get('price_type', "현재가")  # 기본값: 현재가
     
     # 가격 정보 가져오기
-    stock_price = get_stock_price(stock_name, price_type)
+    _, price_response_text = get_stock_price(stock_name, price_type)
     
-    # 응답 메시지 생성
-    price_response_text = f"📊 {stock_name}의 {price_type}는 {stock_price}원입니다."
-    print(f"image_url: {image_url}\n")
-    print(f"response_text: {response_text}\n")
-    print(f"stock_price: {stock_price}\n")
-    print(price_response_text)
-    print("\n")
+    # print(f"image_url: {image_url}\n")
+    # print(f"response_text: {response_text}\n")
+    # print(f"stock_price: {stock_price}\n")
+    # print(price_response_text)
+    # print("\n")
     return jsonify(
         {
             "version": "2.0",
