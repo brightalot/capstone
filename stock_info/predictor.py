@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class model_class:
+class StockPredictor:
     def __init__(self):
         self.reg = linear_model.Lasso(alpha=0.1)
 
@@ -16,76 +16,64 @@ class model_class:
 
     def _prepare_features(self, data):
         # data는 dict 형식이라고 가정
-        oprc_data = self._reverse_int_list(data, 'stck_oprc')
-        clpr_data = self._reverse_int_list(data, 'stck_clpr')
-        hgpr_data = self._reverse_int_list(data, 'stck_hgpr')
-        lwpr_data = self._reverse_int_list(data, 'stck_lwpr')
-        vol_data = self._reverse_int_list(data, 'acml_vol')
-        pbmn_data = self._reverse_int_list(data, 'acml_tr_pbmn')
-        sign_data = self._reverse_int_list(data, 'prdy_vrss_sign')
-        vrss_data = self._reverse_int_list(data, 'prdy_vrss')
-        
-            # 🔍 여기에 디버깅 출력
-        print(f"🔍 oprc_data 길이: {len(oprc_data)}")
+        oprc = self._reverse_int_list(data, 'stck_oprc')
+        clpr = self._reverse_int_list(data, 'stck_clpr')
+        hgpr = self._reverse_int_list(data, 'stck_hgpr')
+        lwpr = self._reverse_int_list(data, 'stck_lwpr')
+        vol = self._reverse_int_list(data, 'acml_vol')
+        pbmn = self._reverse_int_list(data, 'acml_tr_pbmn')
+        sign = self._reverse_int_list(data, 'prdy_vrss_sign')
+        vrss = self._reverse_int_list(data, 'prdy_vrss')
 
-        # 데이터 길이 체크
-        min_len = min(len(oprc_data), len(clpr_data), len(hgpr_data), len(lwpr_data),
-                      len(vol_data), len(pbmn_data), len(sign_data), len(vrss_data))
+        print(f"🔍 oprc 길이: {len(oprc)}")
+
+        min_len = min(len(oprc), len(clpr), len(hgpr), len(lwpr),
+                      len(vol), len(pbmn), len(sign), len(vrss))
         if min_len < 100:
-            raise ValueError(f"예측이 제공되지 않는 종목입니다.")
+            raise ValueError("예측이 제공되지 않는 종목입니다.")
+
         X = []
         for i in range(1, 100):  # 99개 데이터
             X.append([
                 i,
-                oprc_data[i],
-                clpr_data[i],
-                hgpr_data[i],
-                lwpr_data[i],
-                vol_data[i],
-                pbmn_data[i],
-                sign_data[i],
-                vrss_data[i]
+                oprc[i],
+                clpr[i],
+                hgpr[i],
+                lwpr[i],
+                vol[i],
+                pbmn[i],
+                sign[i],
+                vrss[i]
             ])
-        return X, oprc_data, clpr_data, hgpr_data, lwpr_data, vol_data, pbmn_data, sign_data, vrss_data
-
-    def predict_hgpr(self, data):
-        X, oprc_data, clpr_data, hgpr_data, lwpr_data, vol_data, pbmn_data, sign_data, vrss_data = self._prepare_features(data)
-        y = hgpr_data[1:100]
-        self.reg.fit(X, y)
-
-        next_input = [[
+        
+        latest_input = [[
             99,
-            oprc_data[99],
-            clpr_data[99],
-            hgpr_data[99],
-            lwpr_data[99],
-            vol_data[99],
-            pbmn_data[99],
-            sign_data[99],
-            vrss_data[99]
+            oprc[99],
+            clpr[99],
+            hgpr[99],
+            lwpr[99],
+            vol[99],
+            pbmn[99],
+            sign[99],
+            vrss[99]
         ]]
-        return int(self.reg.predict(next_input)[0])
+        
+        return X, hgpr, lwpr, latest_input
 
-    def predict_lwpr(self, data):
-        X, oprc_data, clpr_data, hgpr_data, lwpr_data, vol_data, pbmn_data, sign_data, vrss_data = self._prepare_features(data)
-        y = lwpr_data[1:100]
+    def predict_high(self, data):
+        X, hgpr, _, latest_input = self._prepare_features(data)
+        y = hgpr[1:100]
         self.reg.fit(X, y)
+        return int(self.reg.predict(latest_input)[0])
 
-        next_input = [[
-            99,
-            oprc_data[99],
-            clpr_data[99],
-            hgpr_data[99],
-            lwpr_data[99],
-            vol_data[99],
-            pbmn_data[99],
-            sign_data[99],
-            vrss_data[99]
-        ]]
-        return int(self.reg.predict(next_input)[0])
+    def predict_low(self, data):
+        X, _, lwpr, latest_input = self._prepare_features(data)
+        y = lwpr[1:100]
+        self.reg.fit(X, y)
+        return int(self.reg.predict(latest_input)[0])
 
 
-class stock_class:
+class StockDataHandler:
     def __init__(self):
         my_key = os.getenv("MY_APP_KEY_2")
         my_secret = os.getenv("MY_APP_SECRET_KEY_2")
@@ -117,10 +105,9 @@ class stock_class:
             timeframe=timeframe,
             adj_price=True
         )
-        self.data = raw_data  # 전체 구조 유지
+        self.data = raw_data
 
     def return_data(self):
-        # 'output2'를 추출해서 dict(orient='list') 형식으로 반환
         if isinstance(self.data, dict) and 'output2' in self.data:
             df = pd.DataFrame(self.data['output2'])
             return df.to_dict(orient='list')

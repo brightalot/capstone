@@ -610,13 +610,12 @@ def mock_order():
         
         result = response.json()
         print(result)
+        success_codes = ['0000', '40600000', '40590000']
         # ✅ 모의투자 장 종료 예외처리
         if result.get('msg_cd') == '40580000':
-            raise Exception("모의투자 장 종료로 주문이 불가능합니다.")
-        
+            raise Exception("모의투자 장 종료로 주문이 불가능합니다. (KRX 모의거래 거래 가능 시간은 09:00 ~ 15:30 입니다.)")
         # ✅ 응답 성공 여부 체크
-        elif result.get('msg_cd') != '0000':
-            # 실패한 경우
+        elif result.get('msg_cd') not in success_codes:
             raise Exception(result.get('msg1', '주문 실패'))
 
         order_no = result.get('output', {}).get('ODNO', '(주문번호 없음)')
@@ -627,7 +626,7 @@ def mock_order():
             "template": {
                 "outputs": [
                     {"simpleText": {"text": f"✅ {stock_name} {quantity}주 {order_type} 주문이 접수되었습니다."}},
-                    {"simpleText": {"text": f"주문번호: {order_no}"}}
+                    # {"simpleText": {"text": f"주문번호: {order_no}"}}
                 ],
                 "quickReplies": [
                     {"label": "처음으로", "action": "block", "blockId": home_block_id},
@@ -766,7 +765,7 @@ def mock_inquire_balance():
         })
 
     
-from stock_info.predictor import stock_class, model_class
+from stock_info.predictor import StockDataHandler, StockPredictor
 
     
 # 예측 API 엔드포인트
@@ -783,8 +782,8 @@ def predict_stock_price():
     chart_code = type_map.get(chart_type, "W")
 
     try:
-        sc = stock_class()
-        mc = model_class()
+        sc = StockDataHandler()
+        mc = StockPredictor()
 
         code = sc.code_by_name(stock_name)
         if not code:
@@ -793,8 +792,8 @@ def predict_stock_price():
         sc.resp_Time(chart_code, code)
         data = sc.return_data()
 
-        high = mc.predict_hgpr(data)
-        low = mc.predict_lwpr(data)
+        high = mc.predict_high(data)
+        low = mc.predict_low(data)
 
         prediction_date = get_prediction_date(chart_type)
 
