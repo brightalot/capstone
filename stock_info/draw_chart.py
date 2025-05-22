@@ -66,8 +66,8 @@ def get_stock_price(stock_name, price_type="현재가"):
     if price_type == "현재가":
         change_sign = output.get("prdy_vrss_sign")  # '1' 하락, '2' 상승, '3' 보합
         change_rate = output.get("prdy_ctrt", "0.00")
-
-        if change_sign == "1":
+        print(f"\nchange_sign : {change_sign}\n")
+        if change_sign == "5":
             change_symbol = "▼"
         elif change_sign == "2":
             change_symbol = "▲"
