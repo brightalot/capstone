@@ -3,6 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from utils.image_upload import upload_to_s3 # 이미지 업로드 관련 모듈
 from datetime import datetime, timedelta
+from matplotlib import rc
+from matplotlib.font_manager import FontProperties
+import matplotlib.font_manager as fm
 
 import os
 from dotenv import load_dotenv
@@ -18,6 +21,10 @@ my_key = os.getenv("MY_APP_KEY_2")
 my_secret = os.getenv("MY_APP_SECRET_KEY_2")
 my_acc_no = os.getenv("MY_ACC_NO_2")
 
+font_path = os.getenv("FONT_PATH")
+fm.fontManager.addfont(font_path)
+font_prop = FontProperties(fname=font_path)
+rc('font', family=font_prop.get_name())
 
 #개인 정보 저장
 broker = mojito.KoreaInvestment(
@@ -26,11 +33,9 @@ broker = mojito.KoreaInvestment(
     acc_no = my_acc_no
 )
 
-#전역 변수로 코스피 / 코스닥 심볼 저장
-kospi_symbols = broker.fetch_kospi_symbols()
-kosdaq_symbols = broker.fetch_kosdaq_symbols()
-
 def code_by_name(name):
+    kospi_symbols = broker.fetch_kospi_symbols()
+    kosdaq_symbols = broker.fetch_kosdaq_symbols()
     for i in range(len(dict(kospi_symbols)['한글명'])):
         if dict(kospi_symbols)['한글명'][i] == name:
             return dict(kospi_symbols)['단축코드'][i]

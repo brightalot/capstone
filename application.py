@@ -17,13 +17,14 @@ from stock_info.stock_rank import get_price_change_rank
 from stock_info.stock_rank import get_volume_power_rank
 
 app = Flask(__name__)
-font_path = '/usr/share/fonts/truetype/unfonts-core/UnDotum.ttf'
+
+load_dotenv()
+font_path = os.getenv("FONT_PATH")
 font_prop = fm.FontProperties(fname=font_path)
 rc('font', family=font_prop.get_name())    
 plt.rcParams['axes.unicode_minus'] = False  # 음수 기호 깨짐 방지
 
 # .env 파일 로드
-load_dotenv()
 
 # .env 파일에서 환경 변수 가져오기
 price_info_block_id = os.getenv("PRICE_INFO_BLOCK_ID")
